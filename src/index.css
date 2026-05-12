@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --color-studio-bg: #0A0A0A;
+  --color-studio-surface: #000000;
+  --color-studio-accent: #9FE870;
+  --color-studio-warning: #FFB020;
+  --color-studio-error: #FF4444;
+  --font-sans: 'Inter', 'SF Pro', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+body {
+  background-color: var(--color-studio-bg);
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+}
+
+/* Hard-edge aesthetic per PRD §9.4 */
+* {
+  border-radius: 0 !important;
+}
+
+/* Only these elements get 4px radius */
+button:not(.no-radius),
+.modal,
+.dropdown-menu {
+  border-radius: 4px !important;
+}
