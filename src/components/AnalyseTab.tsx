@@ -178,37 +178,38 @@ export default function AnalyseTab() {
         )
       : 16;
 
+    const isTechno = result.bpm >= 128;
+    const rows = isTechno
+      ? ['Kick', 'Sub/Bass', 'Perc/Hats', 'Mid/Lead', 'Pads/Strings', 'Vox', 'FX/Risers']
+      : ['Kick', 'Sub/Bass', 'Pluck/Arp', 'Mid/Lead', 'Pads/Strings', 'Vox', 'Perc/Hats', 'FX/Risers'];
+
     return {
       schema_version: '0.1.0',
       id: `analysis-${filename}`,
       type: 'analysis' as const,
       title: `Analysis: ${filename}`,
-      style: 'techno' as const,
+      style: isTechno ? 'techno' as const : 'prog_house' as const,
       reference_artists: [] as string[],
       bpm: Math.round(result.bpm),
       bpm_range: [Math.round(result.bpm - 2), Math.round(result.bpm + 2)] as [number, number],
       swing_percent: 0,
       ghost_note_density: 0,
-      rows: ['Kick', 'Clap', 'Hat', 'Snare', 'Bass', 'Synth', 'Pad', 'FX'],
+      rows,
       total_bars: totalBars,
       sections: result.sections.map((s) => {
         const bc = Math.ceil(s.bars / 8);
+        const activity: Record<string, number[]> = {};
+        for (const row of rows) {
+          activity[row] = Array(bc).fill(2);
+        }
         return {
           id: `sec-${s.name}-${s.start_bar}`,
           name: s.name,
           color: s.color,
           start_bar: s.start_bar,
           bars: s.bars,
-          activity: {
-            Kick: Array(bc).fill(2),
-            Clap: Array(bc).fill(0),
-            Hat: Array(bc).fill(1),
-            Snare: Array(bc).fill(0),
-            Bass: Array(bc).fill(2),
-            Synth: Array(bc).fill(1),
-            Pad: Array(bc).fill(1),
-            FX: Array(bc).fill(0),
-          } as Record<string, number[]>,
+          confidence: s.confidence,
+          activity,
           notes: [] as string[],
           references: [] as { artist: string; title: string; start_seconds: number; end_seconds: number; note: string }[],
         };
@@ -253,12 +254,22 @@ export default function AnalyseTab() {
             <span>{Math.round(result.bpm)} BPM</span>
             <span>{result.key_camelot} ({result.key_standard})</span>
             <span>Conf: {(result.bpm_confidence * 100).toFixed(0)}%</span>
+            <span className="text-white/40 font-mono text-[10px]">
+              {result.sections.length} sections
+            </span>
+            <span className="text-white/40 font-mono text-[10px]">
+              avg confidence {Math.round(
+                result.sections.reduce((sum, s) => sum + (s.confidence ?? 0), 0) /
+                  Math.max(result.sections.length, 1) * 100
+              )}%
+            </span>
           </div>
           <BarGrid
             doc={makeDoc(openResult, openTrack.filename) as any}
             selectedSectionId={null}
             onSelectSection={() => {}}
             onCycleCell={() => {}}
+            showConfidence={true}
           />
         </div>
       </div>

@@ -39,6 +39,7 @@ export interface SectionData {
   start_bar: number;
   bars: number;
   color: string;
+  confidence: number;
 }
 
 export interface AnalysisResult {

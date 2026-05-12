@@ -46,9 +46,10 @@ interface BarGridProps {
   selectedSectionId: string | null;
   onSelectSection: (id: string) => void;
   onCycleCell: (sectionId: string, rowName: string, cellIndex: number) => void;
+  showConfidence?: boolean;
 }
 
-export default function BarGrid({ doc, selectedSectionId, onSelectSection, onCycleCell }: BarGridProps) {
+export default function BarGrid({ doc, selectedSectionId, onSelectSection, onCycleCell, showConfidence }: BarGridProps) {
   const blockCount = Math.ceil(doc.total_bars / 8);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -125,6 +126,7 @@ export default function BarGrid({ doc, selectedSectionId, onSelectSection, onCyc
         totalBars={doc.total_bars}
         selectedSectionId={selectedSectionId}
         onSelectSection={onSelectSection}
+        showConfidence={showConfidence}
       />
 
       {/* Bar number labels */}
