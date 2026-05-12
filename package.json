@@ -13,7 +13,8 @@
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-log": "^2.8.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
