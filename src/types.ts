@@ -34,6 +34,25 @@ export interface AnalysisMetadata {
   analyser_version?: string;
 }
 
+export interface SectionData {
+  name: string;
+  start_bar: number;
+  bars: number;
+  color: string;
+}
+
+export interface AnalysisResult {
+  bpm: number;
+  bpm_confidence: number;
+  key_camelot: string;
+  key_standard: string;
+  key_confidence: number;
+  downbeat_offset_seconds: number;
+  beat_positions_seconds: number[];
+  duration_seconds: number;
+  sections: SectionData[];
+}
+
 export interface ArrangementDoc {
   schema_version: string;
   id: string;

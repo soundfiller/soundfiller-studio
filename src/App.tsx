@@ -2,6 +2,7 @@ import { useState } from 'react';
 import BarGrid from './components/BarGrid';
 import BpmPicker from './components/BpmPicker';
 import NotesPanel from './components/NotesPanel';
+import AnalyseTab from './components/AnalyseTab';
 import { useProjectStore } from './store/useProjectStore';
 
 type Tab = 'plan' | 'analyse' | 'library' | 'compare';
@@ -116,8 +117,11 @@ export default function App() {
           </div>
         )}
 
+        {/* Analyse tab */}
+        {tab === 'analyse' && <AnalyseTab />}
+
         {/* Other tabs — placeholder */}
-        {tab !== 'plan' && (
+        {(tab !== 'plan' && tab !== 'analyse') && (
           <div className="flex items-center justify-center flex-1">
             <p className="text-white/35 text-sm font-mono">
               {tab.charAt(0).toUpperCase() + tab.slice(1)} tab — coming soon.
