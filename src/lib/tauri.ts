@@ -28,6 +28,10 @@ export async function listAnalysedTracks(): Promise<[string, string, AnalysisRes
   return invoke('list_analysed_tracks');
 }
 
+export async function ingestYoutube(url: string, ackToken: string): Promise<string> {
+  return invoke('ingest_youtube', { url, ackToken });
+}
+
 export async function deleteAnalysis(id: string): Promise<void> {
   return invoke('delete_analysis', { id });
 }
@@ -48,4 +52,10 @@ export function onAnalysisError(
   callback: (event: { id: string; error: string }) => void,
 ): Promise<() => void> {
   return listen<{ id: string; error: string }>('analysis-error', (e) => callback(e.payload));
+}
+
+export function onYoutubeDownloadProgress(
+  callback: (event: { id: string; progress: number }) => void,
+): Promise<() => void> {
+  return listen<{ id: string; progress: number }>('youtube-download-progress', (e) => callback(e.payload));
 }

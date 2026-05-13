@@ -4,6 +4,7 @@ import BarGrid from './BarGrid';
 import NotesPanel from './NotesPanel';
 import {
   ingestAudioFile,
+  ingestYoutube,
   getAnalysisStatus,
   getAnalysisResult,
   listAnalysedTracks,
@@ -11,12 +12,13 @@ import {
   onAnalysisStatusUpdate,
   onAnalysisComplete,
   onAnalysisError,
+  onYoutubeDownloadProgress,
 } from '../lib/tauri';
 
 interface TrackEntry {
   id: string;
   filename: string;
-  status: 'queued' | 'analysing' | 'done' | 'error';
+  status: 'queued' | 'downloading' | 'analysing' | 'done' | 'error';
   error?: string;
   result?: AnalysisResult;
 }
@@ -26,6 +28,13 @@ export default function AnalyseTab() {
   const [dragOver, setDragOver] = useState(false);
   const [openTrackId, setOpenTrackId] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [legalAckAccepted, setLegalAckAccepted] = useState(
+    () => localStorage.getItem('soundfiller-youtube-ack') === 'accepted_v1'
+  );
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
+  const [youtubeLoading, setYoutubeLoading] = useState(false);
   const cleanupRef = useRef<() => void>(() => {});
 
   // Listen for analysis events
@@ -54,6 +63,10 @@ export default function AnalyseTab() {
           t.id === event.id ? { ...t, status: 'error', error: event.error } : t,
         ),
       );
+    }).then((u) => unsubs.push(u));
+
+    onYoutubeDownloadProgress((event) => {
+      setDownloadProgress((prev) => ({ ...prev, [event.id]: event.progress }));
     }).then((u) => unsubs.push(u));
 
     cleanupRef.current = () => unsubs.forEach((u) => u());
@@ -145,6 +158,50 @@ export default function AnalyseTab() {
     } catch (err) {
       console.error('Browse error:', err);
     }
+  }, []);
+
+  const handleYoutubeSubmit = useCallback(async () => {
+    const url = youtubeUrl.trim();
+    if (!url) return;
+
+    if (!legalAckAccepted) {
+      setShowLegalModal(true);
+      return;
+    }
+
+    setYoutubeLoading(true);
+    const pendingId = `pending-yt-${Date.now()}`;
+    try {
+      const entry: TrackEntry = {
+        id: pendingId,
+        filename: url,
+        status: 'queued',
+      };
+      setTracks((prev) => [...prev, entry]);
+
+      const id = await ingestYoutube(url, 'accepted_v1');
+      setTracks((prev) =>
+        prev.map((t) => (t.id === pendingId ? { ...t, id } : t)),
+      );
+      setYoutubeUrl('');
+    } catch (err) {
+      console.error('YouTube ingest error:', err);
+      setTracks((prev) =>
+        prev.map((t) =>
+          t.id === pendingId
+            ? { ...t, status: 'error', error: String(err) }
+            : t,
+        ),
+      );
+    } finally {
+      setYoutubeLoading(false);
+    }
+  }, [youtubeUrl, legalAckAccepted]);
+
+  const handleAcceptLegal = useCallback(() => {
+    localStorage.setItem('soundfiller-youtube-ack', 'accepted_v1');
+    setLegalAckAccepted(true);
+    setShowLegalModal(false);
   }, []);
 
   const handleDelete = useCallback(
@@ -356,6 +413,47 @@ export default function AnalyseTab() {
           </div>
         </div>
 
+        {/* YouTube URL input */}
+        <div style={{ marginBottom: '16px' }}>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <div className="text-[10px] font-mono text-white/35 uppercase tracking-wider mb-1.5">
+                Or paste YouTube URL
+              </div>
+              <input
+                type="text"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleYoutubeSubmit()}
+                placeholder="https://www.youtube.com/watch?v=…"
+                className="w-full text-xs font-mono text-white/70 bg-white/[0.03] border border-white/10 px-3 py-2 outline-none no-radius
+                  focus:border-[var(--color-studio-accent,#50FA7B)] transition-colors
+                  placeholder:text-white/20"
+              />
+            </div>
+            <button
+              onClick={handleYoutubeSubmit}
+              disabled={youtubeLoading || !youtubeUrl.trim()}
+              className="text-xs font-mono no-radius transition-colors px-4 py-2 shrink-0 disabled:opacity-30"
+              style={{
+                backgroundColor: 'transparent',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.6)',
+              }}
+            >
+              {youtubeLoading ? '…' : 'Analyse'}
+            </button>
+          </div>
+          {!legalAckAccepted && (
+            <button
+              onClick={() => setShowLegalModal(true)}
+              className="text-[10px] font-mono text-white/30 hover:text-white/50 transition-colors mt-1.5 no-radius"
+            >
+              ⚠️ Legal acknowledgement required for YouTube features
+            </button>
+          )}
+        </div>
+
         {/* Track list */}
         {tracks.length > 0 && (
           <div>
@@ -384,10 +482,11 @@ export default function AnalyseTab() {
                       style={{
                         backgroundColor:
                           track.status === 'queued' ? 'rgba(255,255,255,0.25)' :
+                          track.status === 'downloading' ? '#B8860B' :
                           track.status === 'analysing' ? '#50FA7B' :
                           track.status === 'done' ? '#50FA7B' :
                           '#FF5555',
-                        animation: track.status === 'analysing' ? 'pulse 1s infinite' : 'none',
+                        animation: (track.status === 'analysing' || track.status === 'downloading') ? 'pulse 1s infinite' : 'none',
                       }}
                     />
 
@@ -400,6 +499,11 @@ export default function AnalyseTab() {
                     <span className="shrink-0 flex items-center gap-3 text-[10px]">
                       {track.status === 'queued' && (
                         <span className="text-white/25">Queued</span>
+                      )}
+                      {track.status === 'downloading' && (
+                        <span className="text-[#B8860B]">
+                          Downloading{downloadProgress[track.id] !== undefined ? ` ${Math.round(downloadProgress[track.id])}%` : '…'}
+                        </span>
                       )}
                       {track.status === 'analysing' && (
                         <span className="text-[#50FA7B]">Analysing…</span>
@@ -445,6 +549,58 @@ export default function AnalyseTab() {
           <div className="text-center py-12">
             <div className="text-xs font-mono text-white/30">
               No tracks analysed yet. Drop an audio file to begin.
+            </div>
+          </div>
+        )}
+
+        {/* Legal acknowledgement modal */}
+        {showLegalModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+            onClick={() => setShowLegalModal(false)}
+          >
+            <div
+              className="max-w-md mx-4 p-6"
+              style={{
+                backgroundColor: '#1a1a1a',
+                border: '1px solid rgba(255,255,255,0.12)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-sm font-mono text-white mb-4">
+                ⚖️ Legal Acknowledgement
+              </h2>
+              <div className="text-xs font-mono text-white/60 leading-relaxed space-y-3 mb-5">
+                <p>
+                  I confirm I am downloading audio <strong className="text-white/80">solely for personal reference and analysis</strong>
+                  (fair-use educational purposes), and that I will not redistribute, publish, or
+                  use the downloaded audio commercially.
+                </p>
+                <p className="text-white/40">
+                  Downloading copyrighted material may violate YouTube's Terms of Service in
+                  some jurisdictions; I take sole responsibility for my use of this feature.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowLegalModal(false)}
+                  className="text-xs font-mono text-white/40 hover:text-white/70 transition-colors no-radius px-3 py-1.5"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAcceptLegal}
+                  className="text-xs font-mono no-radius px-4 py-1.5 transition-colors"
+                  style={{
+                    backgroundColor: 'var(--color-studio-accent, #50FA7B)',
+                    color: '#000',
+                    fontWeight: 600,
+                  }}
+                >
+                  I Accept
+                </button>
+              </div>
             </div>
           </div>
         )}

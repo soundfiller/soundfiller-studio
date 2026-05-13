@@ -29,6 +29,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::ingest_audio_file,
+            commands::ingest_youtube,
             commands::get_analysis_status,
             commands::get_analysis_result,
             commands::list_analysed_tracks,
