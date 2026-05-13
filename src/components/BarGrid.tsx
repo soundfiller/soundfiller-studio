@@ -18,6 +18,7 @@ const INTENSITY_LABELS: Record<Intensity, string> = {
 
 const BLOCK_SIZE = 64; // px per 8-bar block
 const ROW_HEIGHT = 28; // px per row
+const LABEL_WIDTH = 110; // px for row label gutter
 
 function getSectionForBlock(sections: ArrangementDoc['sections'], blockIndex: number): { name: string; startBar: number } | null {
   const barStart = blockIndex * 8 + 1;
@@ -129,16 +130,19 @@ export default function BarGrid({ doc, selectedSectionId, onSelectSection, onCyc
         showConfidence={showConfidence}
       />
 
-      {/* Bar number labels */}
+      {/* Grid header row */}
       <div
         className="no-radius"
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${blockCount}, ${BLOCK_SIZE}px)`,
+          gridTemplateColumns: `${LABEL_WIDTH}px repeat(${blockCount}, ${BLOCK_SIZE}px)`,
           gap: '1px',
           marginBottom: '1px',
+          paddingLeft: '5px',
         }}
       >
+        {/* Empty cell aligned with row labels */}
+        <div className="no-radius" />
         {Array.from({ length: blockCount }, (_, i) => (
           <div
             key={i}
@@ -156,12 +160,24 @@ export default function BarGrid({ doc, selectedSectionId, onSelectSection, onCyc
           className="no-radius"
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${blockCount}, ${BLOCK_SIZE}px)`,
+            gridTemplateColumns: `${LABEL_WIDTH}px repeat(${blockCount}, ${BLOCK_SIZE}px)`,
             gap: '1px',
             height: `${ROW_HEIGHT}px`,
             marginBottom: '1px',
           }}
         >
+          {/* Row label — proper column, no overlap */}
+          <div
+            className="no-radius flex items-center pr-3 cursor-default"
+            style={{
+              backgroundColor: 'var(--color-studio-bg, #0a0a0a)',
+              height: `${ROW_HEIGHT}px`,
+            }}
+          >
+            <span className="text-[11px] font-mono text-white/55 truncate w-full text-right">
+              {rowName}
+            </span>
+          </div>
           {Array.from({ length: blockCount }, (_, blockIndex) => {
             const intensity = getCellIntensity(rowName, blockIndex);
             return (
@@ -182,20 +198,11 @@ export default function BarGrid({ doc, selectedSectionId, onSelectSection, onCyc
         </div>
       ))}
 
-      {/* Row labels side */}
-      <div
-        className="absolute left-0 top-0 flex flex-col pointer-events-none"
-        style={{ marginTop: '36px' }} // offset for section headers + bar numbers
-      >
-        {doc.rows.map((rowName) => (
-          <div
-            key={rowName}
-            className="no-radius flex items-center justify-end pr-2 text-[11px] font-mono text-white/40"
-            style={{ height: `${ROW_HEIGHT + 1}px` }}
-          >
-            {rowName}
-          </div>
-        ))}
+      {/* Section headers offset to align with grid cells (past the label column) */}
+      <div style={{ marginLeft: `${LABEL_WIDTH + 5}px` }}>
+        <span className="text-[10px] font-mono text-white/40">
+          {doc.rows.length} rows · {doc.total_bars} bars
+        </span>
       </div>
 
       {/* Tooltip */}

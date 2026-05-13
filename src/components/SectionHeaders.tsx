@@ -16,6 +16,7 @@ interface SectionHeadersProps {
 }
 
 const BLOCK_SIZE = 64; // px per 8-bar block — matches BarGrid
+const LABEL_WIDTH = 110; // px for row label gutter — matches BarGrid
 
 export default function SectionHeaders({
   sections,
@@ -37,11 +38,13 @@ export default function SectionHeaders({
       className="relative"
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${blockCount}, ${BLOCK_SIZE}px)`,
+        gridTemplateColumns: `${LABEL_WIDTH}px repeat(${blockCount}, ${BLOCK_SIZE}px)`,
         gap: '1px',
         marginBottom: '1px',
       }}
     >
+      {/* Empty cell to fill the label column */}
+      <div className="no-radius" />
       {sections.map((section) => {
         const startBlock = Math.floor((section.start_bar - 1) / 8);
         const blockSpan = Math.ceil(section.bars / 8);
